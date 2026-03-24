@@ -1,22 +1,37 @@
-# iOS Application Development Guide
-## Navigation · Sensors · GPS · List/Table View · Core Data
+# TrailTracker — iOS App
 
-A comprehensive, step-by-step guide to building a full-featured iOS application using Swift and UIKit/SwiftUI. This guide walks you through each concept independently so you can understand and integrate them into a cohesive app.
+> A production-style iOS app that tracks outdoor trails using GPS, reads device sensors, and persists data with Core Data. Built with Swift and SwiftUI.
 
 ---
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Project Setup](#project-setup)
-3. [File Structure](#file-structure)
-4. [Part 1 — Navigation](#part-1--navigation)
-5. [Part 2 — Sensors](#part-2--sensors)
-6. [Part 3 — GPS & Location](#part-3--gps--location)
-7. [Part 4 — List / Table View](#part-4--list--table-view)
-8. [Part 5 — Core Data](#part-5--core-data)
-9. [Putting It All Together](#putting-it-all-together)
-10. [Build & Run](#build--run)
+1. [What We're Building](#what-were-building)
+2. [Prerequisites](#prerequisites)
+3. [Project Setup](#project-setup)
+4. [Architecture & File Structure](#architecture--file-structure)
+5. [Part 1 — Navigation](#part-1--navigation)
+6. [Part 2 — Sensors](#part-2--sensors)
+7. [Part 3 — GPS & Location](#part-3--gps--location)
+8. [Part 4 — List / Table View](#part-4--list--table-view)
+9. [Part 5 — Core Data Persistence](#part-5--core-data-persistence)
+10. [Putting It All Together](#putting-it-all-together)
+11. [Build & Run](#build--run)
+
+---
+
+## What We're Building
+
+TrailTracker is a real iOS application that lets users:
+
+- **Record GPS trails** with live map visualization
+- **Track motion data** — steps, pace, acceleration, rotation rate
+- **Browse and manage** saved trails in a searchable list
+- **Persist everything** locally using Core Data so data survives app restarts
+
+By the end of this guide you will have a fully functional app you can run on a real device or the simulator. Every section is self-contained — skip to the part you need.
+
+**Keywords:** SwiftUI app tutorial, iOS trail tracker, GPS route recorder, CoreMotion pedometer, Core Data iOS 16, MVVM Swift
 
 ---
 
@@ -28,9 +43,11 @@ A comprehensive, step-by-step guide to building a full-featured iOS application 
 | Xcode | 15.0 or later |
 | Swift | 5.9 or later |
 | iOS Deployment Target | iOS 16.0 or later |
-| Apple Developer Account | Free (for Simulator); Paid (for device) |
+| Apple Developer Account | Free (Simulator) · Paid (physical device) |
 
-Install Xcode from the Mac App Store. Once installed, open it and accept the license agreement. Install additional components if prompted.
+Install Xcode from the Mac App Store. Open it, accept the license agreement, and install additional components if prompted.
+
+**Keywords:** Xcode setup, Swift 5.9, iOS 16 minimum deployment, Apple Developer account, Simulator vs device
 
 ---
 
@@ -39,104 +56,111 @@ Install Xcode from the Mac App Store. Once installed, open it and accept the lic
 ### Step 1 — Create the Xcode Project
 
 1. Open **Xcode**.
-2. Click **Create New Project** (or `File > New > Project`).
-3. Select **iOS** tab → choose **App** → click **Next**.
-4. Fill in the project details:
-   - **Product Name:** `TrailTracker` (or any name you choose)
+2. Click **Create New Project** (`File > New > Project`).
+3. Select **iOS** tab → **App** → **Next**.
+4. Fill in project details:
+   - **Product Name:** `TrailTracker`
    - **Team:** Your Apple ID / Team
-   - **Organization Identifier:** `com.yourname` (reverse domain style)
-   - **Interface:** `SwiftUI` *(this guide uses SwiftUI)*
+   - **Organization Identifier:** `com.yourname`
+   - **Interface:** `SwiftUI`
    - **Language:** `Swift`
-   - **Storage:** `Core Data` ← check this box
+   - **Storage:** `Core Data` ← check this
    - **Include Tests:** optional
-5. Click **Next**, choose a save location, click **Create**.
+5. Click **Next**, pick a save location, click **Create**.
 
-> **Note:** Checking "Core Data" at creation generates a pre-configured `Persistence.swift` file and updates `AppDelegate`/`@main` entry point automatically. You can always add Core Data manually later.
+> Checking "Core Data" at creation auto-generates `Persistence.swift` and wires the managed object context into `@main`. You can add it manually later, but this saves boilerplate.
 
 ### Step 2 — Configure Info.plist Permissions
 
-Open `Info.plist` (or the target's **Info** tab in Xcode 14+). Add these keys:
+Open `Info.plist` (or the target's **Info** tab in Xcode 14+) and add:
 
 ```xml
 <!-- Location permissions -->
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>This app uses your location to track trails and record GPS paths.</string>
+<string>TrailTracker uses your location to record GPS paths.</string>
 
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>This app uses your location in the background to continue tracking your route.</string>
+<string>TrailTracker uses your location in the background to continue tracking your route.</string>
 
 <!-- Motion/sensor permissions -->
 <key>NSMotionUsageDescription</key>
-<string>This app uses motion sensors to count steps and detect activity.</string>
+<string>TrailTracker uses motion sensors to count steps and detect activity.</string>
 ```
 
 ### Step 3 — Add Required Frameworks
 
-In Xcode, select your **Target > General > Frameworks, Libraries, and Embedded Content**. Confirm the following are present (they are included automatically in modern Xcode):
+In **Target > General > Frameworks, Libraries, and Embedded Content**, confirm these are present (modern Xcode includes them automatically):
 
 - `CoreData.framework`
 - `CoreLocation.framework`
 - `CoreMotion.framework`
 - `MapKit.framework`
 
+**Keywords:** Info.plist permissions, NSLocationWhenInUseUsageDescription, NSMotionUsageDescription, Xcode frameworks, CoreLocation setup, CoreMotion setup
+
 ---
 
-## File Structure
+## Architecture & File Structure
 
-Below is the recommended file structure for this project. Create groups in Xcode that mirror this layout (right-click in Project Navigator → New Group).
+TrailTracker uses **MVVM** (Model-View-ViewModel). Views are passive — they observe ViewModels. ViewModels own Services. Services own system APIs.
 
 ```
 TrailTracker/
-├── TrailTrackerApp.swift          # @main entry point, Core Data stack injection
-├── ContentView.swift              # Root view — hosts NavigationStack
+├── TrailTrackerApp.swift              # @main entry point, Core Data stack injection
+├── ContentView.swift                  # Root view — hosts NavigationStack
 │
 ├── Navigation/
-│   └── AppTabView.swift           # Tab bar controller (root navigation)
+│   └── AppTabView.swift               # Tab bar root (TabView + NavigationStack)
 │
 ├── Models/
-│   ├── TrailTracker.xcdatamodeld  # Core Data model (auto-generated)
-│   ├── Trail+CoreDataClass.swift  # NSManagedObject subclass
+│   ├── TrailTracker.xcdatamodeld      # Core Data schema
+│   ├── Trail+CoreDataClass.swift      # NSManagedObject subclass
 │   ├── Trail+CoreDataProperties.swift
 │   └── TrailPoint+CoreDataClass.swift
 │
 ├── ViewModels/
-│   ├── TrailListViewModel.swift   # Drives the list view
-│   ├── TrailDetailViewModel.swift # Drives the detail view
-│   └── SensorViewModel.swift      # Drives the sensors view
+│   ├── TrailListViewModel.swift       # Drives list view — fetch, delete, filter
+│   ├── TrailDetailViewModel.swift     # Drives detail view — map rendering
+│   └── SensorViewModel.swift         # Drives sensors view — formatted readings
 │
 ├── Views/
 │   ├── List/
-│   │   ├── TrailListView.swift    # List/Table view of saved trails
-│   │   └── TrailRowView.swift     # Single row subview
+│   │   ├── TrailListView.swift        # Searchable list of saved trails
+│   │   └── TrailRowView.swift         # Row subview
 │   ├── Detail/
-│   │   ├── TrailDetailView.swift  # Detail screen for one trail
-│   │   └── TrailMapView.swift     # MapKit subview
+│   │   ├── TrailDetailView.swift      # Detail screen for one trail
+│   │   └── TrailMapView.swift         # MapKit polyline subview
 │   ├── Sensors/
-│   │   └── SensorsView.swift      # Accelerometer, pedometer display
+│   │   └── SensorsView.swift          # Accelerometer, gyroscope, pedometer
 │   ├── GPS/
-│   │   └── LiveTrackingView.swift # Real-time GPS tracking + map
+│   │   └── LiveTrackingView.swift     # Real-time GPS tracking + live map
 │   └── Shared/
-│       └── StatBadgeView.swift    # Reusable stat badge component
+│       └── StatBadgeView.swift        # Reusable stat badge component
 │
 ├── Services/
-│   ├── LocationService.swift      # CLLocationManager wrapper
-│   ├── MotionService.swift        # CMMotionManager wrapper
-│   └── PersistenceController.swift# Core Data stack
+│   ├── LocationService.swift          # CLLocationManager wrapper
+│   ├── MotionService.swift            # CMMotionManager + CMPedometer wrapper
+│   └── PersistenceController.swift    # Core Data stack (singleton)
 │
 └── Extensions/
     ├── Color+Extensions.swift
     └── Date+Extensions.swift
 ```
 
+**Design decisions:**
+- Services are `ObservableObject` singletons injected into ViewModels — keeps system APIs isolated and easy to mock.
+- ViewModels own the business logic and publish formatted data — Views contain zero formatting code.
+- Core Data context flows down the view hierarchy via `.environment(\.managedObjectContext, ...)`.
+
+**Keywords:** MVVM architecture iOS, SwiftUI MVVM, ObservableObject, service layer Swift, Core Data environment, separation of concerns
+
 ---
 
 ## Part 1 — Navigation
 
-iOS navigation is managed through `NavigationStack` (SwiftUI) or `UINavigationController` (UIKit). This guide uses SwiftUI's `NavigationStack` combined with a `TabView` for a two-level navigation hierarchy.
+iOS navigation in SwiftUI is built around `NavigationStack` for push/pop flows and `TabView` for top-level sections. TrailTracker uses both: a `TabView` root with three tabs, each containing its own `NavigationStack`.
 
-### 1.1 — Tab Bar Root Navigation
-
-The app uses a `TabView` as the root so users can switch between major sections.
+### 1.1 — Tab Bar Root
 
 **File:** `Navigation/AppTabView.swift`
 
@@ -146,38 +170,29 @@ import SwiftUI
 struct AppTabView: View {
     var body: some View {
         TabView {
-            // Tab 1 — Trail List
             NavigationStack {
                 TrailListView()
                     .navigationTitle("My Trails")
             }
-            .tabItem {
-                Label("Trails", systemImage: "list.bullet")
-            }
+            .tabItem { Label("Trails", systemImage: "list.bullet") }
 
-            // Tab 2 — Live GPS Tracking
             NavigationStack {
                 LiveTrackingView()
                     .navigationTitle("Track")
             }
-            .tabItem {
-                Label("Track", systemImage: "location.fill")
-            }
+            .tabItem { Label("Track", systemImage: "location.fill") }
 
-            // Tab 3 — Sensors
             NavigationStack {
                 SensorsView()
                     .navigationTitle("Sensors")
             }
-            .tabItem {
-                Label("Sensors", systemImage: "waveform.path")
-            }
+            .tabItem { Label("Sensors", systemImage: "waveform.path") }
         }
     }
 }
 ```
 
-### 1.2 — Entry Point
+### 1.2 — App Entry Point
 
 **File:** `TrailTrackerApp.swift`
 
@@ -202,10 +217,6 @@ struct TrailTrackerApp: App {
 
 ### 1.3 — Push Navigation (List → Detail)
 
-NavigationStack uses `NavigationLink` to push views onto the stack.
-
-**File:** `Views/List/TrailListView.swift` (partial — full version in Part 4)
-
 ```swift
 NavigationLink(destination: TrailDetailView(trail: trail)) {
     TrailRowView(trail: trail)
@@ -214,7 +225,7 @@ NavigationLink(destination: TrailDetailView(trail: trail)) {
 
 ### 1.4 — Programmatic Navigation
 
-For programmatic navigation (e.g., after saving data), use a `@State` path variable:
+Use a `@State` path variable when you need to navigate after an async action (e.g., after a save completes):
 
 ```swift
 struct TrailListView: View {
@@ -235,7 +246,7 @@ struct TrailListView: View {
 }
 ```
 
-### 1.5 — Modal Sheets and Alerts
+### 1.5 — Sheets and Alerts
 
 ```swift
 struct TrailListView: View {
@@ -246,31 +257,33 @@ struct TrailListView: View {
         List { ... }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showAddSheet = true }) {
+                Button { showAddSheet = true } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showAddSheet) {
-            AddTrailView()
-        }
+        .sheet(isPresented: $showAddSheet) { AddTrailView() }
         .alert("Delete Trail?", isPresented: $showDeleteAlert) {
-            Button("Delete", role: .destructive) { /* delete action */ }
+            Button("Delete", role: .destructive) { /* delete */ }
             Button("Cancel", role: .cancel) {}
         }
     }
 }
 ```
 
+**Keywords:** NavigationStack SwiftUI, TabView iOS, NavigationLink, programmatic navigation NavigationPath, sheet modifier, toolbar SwiftUI, push navigation, modal presentation
+
 ---
 
 ## Part 2 — Sensors
 
-iOS provides access to device sensors through the `CoreMotion` framework. The key class is `CMMotionManager` for accelerometer, gyroscope, and magnetometer data, and `CMPedometer` for step counting.
+Device sensors are accessed through the `CoreMotion` framework. `CMMotionManager` provides raw accelerometer and gyroscope data. `CMPedometer` provides higher-level step counting and pace.
+
+> **Simulator note:** Accelerometer and gyroscope return no data in the iOS Simulator. Use a real device to test sensor output. Step counting is also unavailable in Simulator.
 
 ### 2.1 — MotionService
 
-Encapsulate all sensor access in a dedicated service class.
+Wraps `CMMotionManager` and `CMPedometer` in a single service class that publishes state to the UI.
 
 **File:** `Services/MotionService.swift`
 
@@ -279,14 +292,12 @@ import CoreMotion
 import Combine
 
 final class MotionService: ObservableObject {
-    // MARK: - Published State
     @Published var accelerometerData: CMAccelerometerData?
     @Published var gyroscopeData: CMGyroData?
     @Published var stepCount: Int = 0
     @Published var currentPace: Double = 0.0   // seconds per meter
     @Published var isAvailable: Bool = false
 
-    // MARK: - Private
     private let motionManager = CMMotionManager()
     private let pedometer = CMPedometer()
     private let updateInterval: TimeInterval = 0.1  // 10 Hz
@@ -301,7 +312,7 @@ final class MotionService: ObservableObject {
         guard motionManager.isAccelerometerAvailable else { return }
         motionManager.accelerometerUpdateInterval = updateInterval
         motionManager.startAccelerometerUpdates(to: .main) { [weak self] data, error in
-            guard let data = data, error == nil else { return }
+            guard let data, error == nil else { return }
             self?.accelerometerData = data
         }
     }
@@ -316,7 +327,7 @@ final class MotionService: ObservableObject {
         guard motionManager.isGyroAvailable else { return }
         motionManager.gyroUpdateInterval = updateInterval
         motionManager.startGyroUpdates(to: .main) { [weak self] data, error in
-            guard let data = data, error == nil else { return }
+            guard let data, error == nil else { return }
             self?.gyroscopeData = data
         }
     }
@@ -329,9 +340,8 @@ final class MotionService: ObservableObject {
 
     func startPedometer() {
         guard CMPedometer.isStepCountingAvailable() else { return }
-        let start = Date()
-        pedometer.startUpdates(from: start) { [weak self] data, error in
-            guard let data = data, error == nil else { return }
+        pedometer.startUpdates(from: Date()) { [weak self] data, error in
+            guard let data, error == nil else { return }
             DispatchQueue.main.async {
                 self?.stepCount = data.numberOfSteps.intValue
                 if let pace = data.currentPace {
@@ -345,117 +355,14 @@ final class MotionService: ObservableObject {
         pedometer.stopUpdates()
     }
 
-    // MARK: - Convenience
-
-    func startAll() {
-        startAccelerometer()
-        startGyroscope()
-        startPedometer()
-    }
-
-    func stopAll() {
-        stopAccelerometer()
-        stopGyroscope()
-        stopPedometer()
-    }
+    func startAll() { startAccelerometer(); startGyroscope(); startPedometer() }
+    func stopAll()  { stopAccelerometer(); stopGyroscope(); stopPedometer() }
 }
 ```
 
-### 2.2 — SensorsView
+### 2.2 — SensorViewModel
 
-**File:** `Views/Sensors/SensorsView.swift`
-
-```swift
-import SwiftUI
-import CoreMotion
-
-struct SensorsView: View {
-    @StateObject private var motionService = MotionService()
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Availability banner
-                if !motionService.isAvailable {
-                    Label("Motion sensors unavailable on this device/simulator",
-                          systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .padding()
-                }
-
-                // Accelerometer Card
-                SensorCard(title: "Accelerometer", systemImage: "gyroscope") {
-                    if let accel = motionService.accelerometerData {
-                        SensorRow(axis: "X", value: accel.acceleration.x)
-                        SensorRow(axis: "Y", value: accel.acceleration.y)
-                        SensorRow(axis: "Z", value: accel.acceleration.z)
-                    } else {
-                        Text("No data").foregroundStyle(.secondary)
-                    }
-                }
-
-                // Gyroscope Card
-                SensorCard(title: "Gyroscope", systemImage: "arrow.3.trianglepath") {
-                    if let gyro = motionService.gyroscopeData {
-                        SensorRow(axis: "X", value: gyro.rotationRate.x)
-                        SensorRow(axis: "Y", value: gyro.rotationRate.y)
-                        SensorRow(axis: "Z", value: gyro.rotationRate.z)
-                    } else {
-                        Text("No data").foregroundStyle(.secondary)
-                    }
-                }
-
-                // Pedometer Card
-                SensorCard(title: "Pedometer", systemImage: "figure.walk") {
-                    LabeledContent("Steps", value: "\(motionService.stepCount)")
-                    LabeledContent("Pace",
-                        value: String(format: "%.1f s/m", motionService.currentPace))
-                }
-            }
-            .padding()
-        }
-        .onAppear { motionService.startAll() }
-        .onDisappear { motionService.stopAll() }
-    }
-}
-
-// MARK: - Subviews
-
-struct SensorCard<Content: View>: View {
-    let title: String
-    let systemImage: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: systemImage)
-                .font(.headline)
-            Divider()
-            content()
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct SensorRow: View {
-    let axis: String
-    let value: Double
-
-    var body: some View {
-        HStack {
-            Text(axis).bold().frame(width: 20)
-            Spacer()
-            Text(String(format: "%.4f", value))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-```
-
-### 2.3 — SensorViewModel
+Transforms raw sensor data into display-ready strings.
 
 **File:** `ViewModels/SensorViewModel.swift`
 
@@ -492,11 +399,101 @@ final class SensorViewModel: ObservableObject {
 }
 ```
 
+### 2.3 — SensorsView
+
+**File:** `Views/Sensors/SensorsView.swift`
+
+```swift
+import SwiftUI
+
+struct SensorsView: View {
+    @StateObject private var motionService = MotionService()
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                if !motionService.isAvailable {
+                    Label("Motion sensors unavailable on this device/simulator",
+                          systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .padding()
+                }
+
+                SensorCard(title: "Accelerometer", systemImage: "gyroscope") {
+                    if let accel = motionService.accelerometerData {
+                        SensorRow(axis: "X", value: accel.acceleration.x)
+                        SensorRow(axis: "Y", value: accel.acceleration.y)
+                        SensorRow(axis: "Z", value: accel.acceleration.z)
+                    } else {
+                        Text("No data").foregroundStyle(.secondary)
+                    }
+                }
+
+                SensorCard(title: "Gyroscope", systemImage: "arrow.3.trianglepath") {
+                    if let gyro = motionService.gyroscopeData {
+                        SensorRow(axis: "X", value: gyro.rotationRate.x)
+                        SensorRow(axis: "Y", value: gyro.rotationRate.y)
+                        SensorRow(axis: "Z", value: gyro.rotationRate.z)
+                    } else {
+                        Text("No data").foregroundStyle(.secondary)
+                    }
+                }
+
+                SensorCard(title: "Pedometer", systemImage: "figure.walk") {
+                    LabeledContent("Steps", value: "\(motionService.stepCount)")
+                    LabeledContent("Pace",
+                        value: String(format: "%.1f s/m", motionService.currentPace))
+                }
+            }
+            .padding()
+        }
+        .onAppear { motionService.startAll() }
+        .onDisappear { motionService.stopAll() }
+    }
+}
+
+// MARK: - Reusable Subviews
+
+struct SensorCard<Content: View>: View {
+    let title: String
+    let systemImage: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: systemImage).font(.headline)
+            Divider()
+            content()
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct SensorRow: View {
+    let axis: String
+    let value: Double
+
+    var body: some View {
+        HStack {
+            Text(axis).bold().frame(width: 20)
+            Spacer()
+            Text(String(format: "%.4f", value))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+```
+
+**Keywords:** CoreMotion Swift, CMMotionManager, CMPedometer, accelerometer SwiftUI, gyroscope iOS, step counter Swift, @Published Combine, weak self closure, 10 Hz sensor update
+
 ---
 
 ## Part 3 — GPS & Location
 
-GPS access is provided by `CoreLocation`. The `CLLocationManager` class requests permissions and delivers location updates.
+GPS access is provided by `CoreLocation`. `CLLocationManager` requests permissions and delivers location updates via its delegate. Accuracy filtering is critical — raw GPS can be noisy, so we reject readings with `horizontalAccuracy >= 20m`.
 
 ### 3.1 — LocationService
 
@@ -508,7 +505,6 @@ import Combine
 import MapKit
 
 final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
-    // MARK: - Published State
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var currentLocation: CLLocation?
     @Published var currentRegion: MKCoordinateRegion = MKCoordinateRegion(
@@ -519,7 +515,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var isTracking: Bool = false
     @Published var totalDistance: Double = 0.0  // meters
 
-    // MARK: - Private
     private let locationManager = CLLocationManager()
     private var lastLocation: CLLocation?
 
@@ -540,7 +535,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         locationManager.requestAlwaysAuthorization()
     }
 
-    // MARK: - Tracking Control
+    // MARK: - Tracking
 
     func startTracking() {
         recordedPath.removeAll()
@@ -559,7 +554,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
-
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             locationManager.startUpdatingLocation()
@@ -575,9 +569,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     func locationManager(_ manager: CLLocationManager,
                          didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-
-        // Filter out inaccurate readings
-        guard location.horizontalAccuracy < 20 else { return }
+        guard location.horizontalAccuracy < 20 else { return }  // filter noise
 
         currentLocation = location
         currentRegion = MKCoordinateRegion(
@@ -587,7 +579,6 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
         if isTracking {
             recordedPath.append(location.coordinate)
-
             if let last = lastLocation {
                 totalDistance += location.distance(from: last)
             }
@@ -595,18 +586,15 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    func locationManager(_ manager: CLLocationManager,
-                         didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("[LocationService] Error: \(error.localizedDescription)")
     }
-
-    // MARK: - Computed
-
-    var totalDistanceKm: Double { totalDistance / 1000.0 }
 }
 ```
 
 ### 3.2 — LiveTrackingView
+
+Displays a live map with a polyline drawn as the user walks.
 
 **File:** `Views/GPS/LiveTrackingView.swift`
 
@@ -618,149 +606,79 @@ struct LiveTrackingView: View {
     @StateObject private var locationService = LocationService()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Map
+        VStack {
+            // Live map
             Map(coordinateRegion: $locationService.currentRegion,
                 showsUserLocation: true,
-                annotationItems: [],
-                annotationContent: { _ in MapPin(coordinate: .init()) }) {
-                // Polyline overlay for recorded path
-                // Note: Full polyline overlay requires MapKit UIViewRepresentable for complex paths
-            }
-            .ignoresSafeArea(edges: .top)
+                annotationItems: []) { _ in MapMarker(coordinate: .init()) }
+                .ignoresSafeArea(edges: .top)
+                .frame(maxHeight: .infinity)
 
-            // Stats Panel
-            VStack(spacing: 0) {
-                HStack(spacing: 30) {
-                    StatBadgeView(
-                        title: "Distance",
-                        value: String(format: "%.2f km",
-                                      locationService.totalDistanceKm)
-                    )
-                    StatBadgeView(
-                        title: "Points",
-                        value: "\(locationService.recordedPath.count)"
-                    )
-                    StatBadgeView(
-                        title: "Status",
-                        value: locationService.isTracking ? "Active" : "Idle"
-                    )
-                }
-                .padding()
-
-                // Track / Stop Button
-                Button(action: toggleTracking) {
-                    Label(
-                        locationService.isTracking ? "Stop Tracking" : "Start Tracking",
-                        systemImage: locationService.isTracking
-                            ? "stop.circle.fill"
-                            : "play.circle.fill"
-                    )
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(locationService.isTracking ? Color.red : Color.green)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
+            // Stats bar
+            HStack {
+                StatBadgeView(
+                    label: "Distance",
+                    value: String(format: "%.0f m", locationService.totalDistance)
+                )
+                Spacer()
+                StatBadgeView(
+                    label: "Points",
+                    value: "\(locationService.recordedPath.count)"
+                )
             }
-            .background(.ultraThinMaterial)
-        }
-        .onAppear {
-            locationService.requestPermission()
-        }
-        // Show alert if denied
-        .alert("Location Access Required",
-               isPresented: .constant(
-                   locationService.authorizationStatus == .denied
-               )) {
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Please enable location access in Settings to use GPS tracking.")
-        }
-    }
+            .padding()
 
-    private func toggleTracking() {
-        if locationService.isTracking {
-            locationService.stopTracking()
-        } else {
-            locationService.startTracking()
+            // Controls
+            Button(locationService.isTracking ? "Stop" : "Start Tracking") {
+                locationService.isTracking
+                    ? locationService.stopTracking()
+                    : locationService.startTracking()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(locationService.isTracking ? .red : .green)
+            .padding(.bottom)
         }
+        .onAppear { locationService.requestPermission() }
     }
 }
 ```
 
-### 3.3 — MapKit Polyline (UIViewRepresentable)
-
-For drawing the GPS path on the map, use a `UIViewRepresentable` wrapper:
-
-**File:** `Views/GPS/TrailMapView.swift`
-
-```swift
-import SwiftUI
-import MapKit
-
-struct TrailMapView: UIViewRepresentable {
-    let coordinates: [CLLocationCoordinate2D]
-    let region: MKCoordinateRegion
-
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.showsUserLocation = true
-        return mapView
-    }
-
-    func updateUIView(_ mapView: MKMapView, context: Context) {
-        mapView.setRegion(region, animated: true)
-
-        // Remove old overlays, redraw path
-        mapView.removeOverlays(mapView.overlays)
-        if coordinates.count > 1 {
-            let polyline = MKPolyline(
-                coordinates: coordinates,
-                count: coordinates.count
-            )
-            mapView.addOverlay(polyline)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    // MARK: - Coordinator
-
-    class Coordinator: NSObject, MKMapViewDelegate {
-        func mapView(_ mapView: MKMapView,
-                     rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let polyline = overlay as? MKPolyline {
-                let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor.systemBlue
-                renderer.lineWidth = 4
-                return renderer
-            }
-            return MKOverlayRenderer(overlay: overlay)
-        }
-    }
-}
-```
+**Keywords:** CoreLocation Swift, CLLocationManager delegate, GPS tracking iOS, horizontalAccuracy filter, MKCoordinateRegion, MapKit SwiftUI, requestWhenInUseAuthorization, distanceFilter, kCLLocationAccuracyBest, polyline map
 
 ---
 
 ## Part 4 — List / Table View
 
-SwiftUI's `List` is the modern equivalent of `UITableView`. It supports sections, swipe actions, reordering, and dynamic data from Core Data via `@FetchRequest`.
+`List` in SwiftUI is the equivalent of `UITableView`. It supports swipe-to-delete, pull-to-refresh, sectioning, and search natively.
 
-### 4.1 — Core Data Fetch with @FetchRequest
+### 4.1 — TrailListViewModel
 
-The `@FetchRequest` property wrapper connects a SwiftUI view directly to a Core Data entity.
+Owns the `@FetchRequest` logic and delete/filter operations.
+
+**File:** `ViewModels/TrailListViewModel.swift`
+
+```swift
+import Foundation
+import CoreData
+import Combine
+
+final class TrailListViewModel: ObservableObject {
+    @Published var searchText: String = ""
+
+    private let viewContext: NSManagedObjectContext
+
+    init(context: NSManagedObjectContext) {
+        self.viewContext = context
+    }
+
+    func delete(_ trail: Trail) {
+        viewContext.delete(trail)
+        try? viewContext.save()
+    }
+}
+```
+
+### 4.2 — TrailListView
 
 **File:** `Views/List/TrailListView.swift`
 
@@ -771,103 +689,52 @@ import CoreData
 struct TrailListView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
-    // Fetch trails sorted by date, newest first
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Trail.date, ascending: false)],
         animation: .default
     )
     private var trails: FetchedResults<Trail>
 
-    @State private var showAddSheet = false
+    @StateObject private var viewModel: TrailListViewModel
     @State private var searchText = ""
 
-    // Filtered trails based on search
+    init() {
+        // viewModel is injected lazily; context arrives via @Environment
+        _viewModel = StateObject(wrappedValue: TrailListViewModel(
+            context: PersistenceController.shared.container.viewContext
+        ))
+    }
+
+    var body: some View {
+        List {
+            ForEach(filteredTrails) { trail in
+                NavigationLink(destination: TrailDetailView(trail: trail)) {
+                    TrailRowView(trail: trail)
+                }
+            }
+            .onDelete(perform: deleteTrails)
+        }
+        .searchable(text: $searchText, prompt: "Search trails")
+        .navigationTitle("My Trails")
+        .toolbar {
+            EditButton()
+        }
+    }
+
     private var filteredTrails: [Trail] {
-        if searchText.isEmpty { return Array(trails) }
+        guard !searchText.isEmpty else { return Array(trails) }
         return trails.filter {
             ($0.name ?? "").localizedCaseInsensitiveContains(searchText)
         }
     }
 
-    var body: some View {
-        List {
-            // Summary section
-            Section {
-                HStack {
-                    Label("\(trails.count) trails recorded",
-                          systemImage: "map.fill")
-                    Spacer()
-                    Text(totalDistanceText)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Trail rows grouped by month
-            ForEach(groupedTrails.keys.sorted().reversed(), id: \.self) { month in
-                Section(header: Text(month)) {
-                    ForEach(groupedTrails[month] ?? []) { trail in
-                        NavigationLink(destination: TrailDetailView(trail: trail)) {
-                            TrailRowView(trail: trail)
-                        }
-                    }
-                    .onDelete { indexSet in
-                        deleteTrails(from: groupedTrails[month] ?? [], at: indexSet)
-                    }
-                }
-            }
-        }
-        .searchable(text: $searchText, prompt: "Search trails")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                EditButton()
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAddSheet = true } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
-        .sheet(isPresented: $showAddSheet) {
-            AddTrailView()
-        }
-        .overlay {
-            if trails.isEmpty {
-                ContentUnavailableView(
-                    "No Trails Yet",
-                    systemImage: "map",
-                    description: Text("Tap + to record your first trail.")
-                )
-            }
-        }
-    }
-
-    // MARK: - Grouping
-
-    private var groupedTrails: [String: [Trail]] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return Dictionary(grouping: filteredTrails) { trail in
-            formatter.string(from: trail.date ?? Date())
-        }
-    }
-
-    private var totalDistanceText: String {
-        let total = trails.reduce(0.0) { $0 + $1.distanceMeters }
-        return String(format: "%.1f km", total / 1000)
-    }
-
-    // MARK: - Delete
-
-    private func deleteTrails(from items: [Trail], at offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-            try? viewContext.save()
-        }
+    private func deleteTrails(at offsets: IndexSet) {
+        offsets.map { filteredTrails[$0] }.forEach(viewModel.delete)
     }
 }
 ```
 
-### 4.2 — TrailRowView
+### 4.3 — TrailRowView
 
 **File:** `Views/List/TrailRowView.swift`
 
@@ -878,205 +745,34 @@ struct TrailRowView: View {
     let trail: Trail
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Color indicator / icon
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "figure.hiking")
-                    .foregroundStyle(.blue)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trail.name ?? "Unnamed Trail")
-                    .font(.headline)
-                    .lineLimit(1)
-
-                HStack(spacing: 8) {
-                    Label(
-                        String(format: "%.2f km", trail.distanceMeters / 1000),
-                        systemImage: "ruler"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    Label(
-                        "\(trail.stepCount) steps",
-                        systemImage: "figure.walk"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            // Date
-            VStack(alignment: .trailing) {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(trail.name ?? "Unnamed Trail")
+                .font(.headline)
+            HStack {
+                Label(
+                    String(format: "%.1f km", (trail.distanceMeters / 1000)),
+                    systemImage: "location"
+                )
+                Spacer()
                 Text(trail.date ?? Date(), style: .date)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }
 }
 ```
 
-### 4.3 — TrailDetailView
-
-**File:** `Views/Detail/TrailDetailView.swift`
-
-```swift
-import SwiftUI
-import CoreData
-
-struct TrailDetailView: View {
-    @ObservedObject var trail: Trail
-    @Environment(\.managedObjectContext) private var viewContext
-    @State private var isEditing = false
-    @State private var editedName: String = ""
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Map
-                if let points = trail.trailPoints?.allObjects as? [TrailPoint],
-                   !points.isEmpty {
-                    let coords = points
-                        .sorted { ($0.timestamp ?? Date()) < ($1.timestamp ?? Date()) }
-                        .map { CLLocationCoordinate2D(latitude: $0.latitude,
-                                                      longitude: $0.longitude) }
-                    TrailMapView(
-                        coordinates: coords,
-                        region: regionFor(coords)
-                    )
-                    .frame(height: 250)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
-
-                // Stats Grid
-                LazyVGrid(columns: [.init(), .init()], spacing: 16) {
-                    StatCard(title: "Distance",
-                             value: String(format: "%.2f km",
-                                           trail.distanceMeters / 1000),
-                             icon: "ruler.fill")
-                    StatCard(title: "Steps",
-                             value: "\(trail.stepCount)",
-                             icon: "figure.walk")
-                    StatCard(title: "Duration",
-                             value: formattedDuration,
-                             icon: "clock.fill")
-                    StatCard(title: "Points",
-                             value: "\(trail.trailPoints?.count ?? 0)",
-                             icon: "mappin.and.ellipse")
-                }
-                .padding(.horizontal)
-
-                // Date
-                Label(
-                    (trail.date ?? Date()).formatted(date: .long, time: .shortened),
-                    systemImage: "calendar"
-                )
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            }
-            .padding(.vertical)
-        }
-        .navigationTitle(trail.name ?? "Trail")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") { isEditing = true }
-            }
-        }
-        .sheet(isPresented: $isEditing) {
-            EditTrailView(trail: trail)
-        }
-    }
-
-    private var formattedDuration: String {
-        let seconds = trail.durationSeconds
-        let h = Int(seconds) / 3600
-        let m = (Int(seconds) % 3600) / 60
-        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
-    }
-
-    private func regionFor(_ coords: [CLLocationCoordinate2D]) -> MKCoordinateRegion {
-        guard !coords.isEmpty else {
-            return MKCoordinateRegion(
-                center: .init(latitude: 37.33, longitude: -122.03),
-                span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            )
-        }
-        let lats = coords.map(\.latitude)
-        let lons = coords.map(\.longitude)
-        let center = CLLocationCoordinate2D(
-            latitude: (lats.min()! + lats.max()!) / 2,
-            longitude: (lons.min()! + lons.max()!) / 2
-        )
-        let span = MKCoordinateSpan(
-            latitudeDelta: (lats.max()! - lats.min()!) * 1.5 + 0.002,
-            longitudeDelta: (lons.max()! - lons.min()!) * 1.5 + 0.002
-        )
-        return MKCoordinateRegion(center: center, span: span)
-    }
-}
-
-struct StatCard: View {
-    let title: String
-    let value: String
-    let icon: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.blue)
-            Text(value).font(.title3).bold()
-            Text(title).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-```
-
-### 4.4 — StatBadgeView (Shared)
-
-**File:** `Views/Shared/StatBadgeView.swift`
-
-```swift
-import SwiftUI
-
-struct StatBadgeView: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.headline)
-                .monospacedDigit()
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(minWidth: 70)
-    }
-}
-```
+**Keywords:** SwiftUI List, FetchRequest Core Data, searchable modifier, onDelete swipe, ForEach CoreData, NSSortDescriptor, filteredResults, EditButton, NavigationLink list row
 
 ---
 
-## Part 5 — Core Data
+## Part 5 — Core Data Persistence
 
-Core Data is an object graph persistence framework. It maps Swift objects to a SQLite store (by default) and provides powerful querying, change tracking, and undo/redo.
+Core Data is the on-device persistence layer. The stack consists of: `NSPersistentContainer` (owns the store) → `NSManagedObjectContext` (scratch pad for objects) → `NSManagedObject` subclasses (your model types).
 
-### 5.1 — Core Data Stack (PersistenceController)
+### 5.1 — PersistenceController
 
 **File:** `Services/PersistenceController.swift`
 
@@ -1086,20 +782,16 @@ import CoreData
 struct PersistenceController {
     static let shared = PersistenceController()
 
-    // In-memory store for SwiftUI previews
-    static let preview: PersistenceController = {
+    // In-memory store for SwiftUI previews and unit tests
+    static var preview: PersistenceController = {
         let controller = PersistenceController(inMemory: true)
         let context = controller.container.viewContext
         // Seed preview data
-        for i in 1...5 {
-            let trail = Trail(context: context)
-            trail.id = UUID()
-            trail.name = "Trail \(i)"
-            trail.date = Calendar.current.date(byAdding: .day, value: -i, to: Date())
-            trail.distanceMeters = Double.random(in: 500...8000)
-            trail.stepCount = Int32.random(in: 600...10000)
-            trail.durationSeconds = Double.random(in: 600...7200)
-        }
+        let trail = Trail(context: context)
+        trail.id = UUID()
+        trail.name = "Sample Trail"
+        trail.date = Date()
+        trail.distanceMeters = 3420
         try? context.save()
         return controller
     }()
@@ -1108,405 +800,163 @@ struct PersistenceController {
 
     init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "TrailTracker")
-
         if inMemory {
             container.persistentStoreDescriptions.first?.url =
                 URL(fileURLWithPath: "/dev/null")
         }
-
-        container.loadPersistentStores { description, error in
-            if let error = error {
-                // In production, handle this gracefully
-                fatalError("Core Data failed to load: \(error.localizedDescription)")
+        container.loadPersistentStores { _, error in
+            if let error {
+                fatalError("Core Data failed to load: \(error)")
             }
         }
-
-        // Automatically merge changes from background contexts
         container.viewContext.automaticallyMergesChangesFromParent = true
-        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-    }
-
-    // MARK: - Save Helper
-
-    func save() {
-        let context = container.viewContext
-        guard context.hasChanges else { return }
-        do {
-            try context.save()
-        } catch {
-            print("Core Data save error: \(error)")
-        }
-    }
-
-    // MARK: - Background Context
-
-    func performBackgroundTask(_ block: @escaping (NSManagedObjectContext) -> Void) {
-        container.performBackgroundTask(block)
     }
 }
 ```
 
-### 5.2 — Core Data Model
+### 5.2 — Data Model (Trail entity)
 
-Open `TrailTracker.xcdatamodeld` in Xcode and create the following entities:
-
-#### Entity: `Trail`
+In `TrailTracker.xcdatamodeld`, create a `Trail` entity with these attributes:
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `id` | UUID | Default: new UUID |
-| `name` | String | Required |
-| `date` | Date | Required |
-| `distanceMeters` | Double | Default: 0.0 |
-| `stepCount` | Integer 32 | Default: 0 |
-| `durationSeconds` | Double | Default: 0.0 |
-| `notes` | String | Optional |
+| `id` | UUID | Set as default on creation |
+| `name` | String | User-provided trail name |
+| `date` | Date | Recording start time |
+| `distanceMeters` | Double | Total distance in meters |
+| `durationSeconds` | Double | Total recording duration |
+| `encodedPath` | String | Polyline encoded coordinate string |
 
-**Relationship:** `trailPoints` → to-many → `TrailPoint` (inverse: `trail`)
+Create a second entity `TrailPoint` with `latitude` (Double), `longitude` (Double), `timestamp` (Date), and a **to-many** relationship `points` on `Trail` (inverse: `trail` on `TrailPoint`).
 
-#### Entity: `TrailPoint`
-
-| Attribute | Type | Notes |
-|---|---|---|
-| `latitude` | Double | |
-| `longitude` | Double | |
-| `altitude` | Double | |
-| `timestamp` | Date | |
-| `horizontalAccuracy` | Double | |
-
-**Relationship:** `trail` → to-one → `Trail` (inverse: `trailPoints`)
-
-In Xcode's Data Model Inspector:
-- Set **Class > Codegen** to `Category/Extension` for both entities
-- Set **Delete Rule** on `trailPoints` to `Cascade` (deleting a Trail deletes its points)
-
-### 5.3 — NSManagedObject Subclasses
-
-**File:** `Models/Trail+CoreDataClass.swift`
+### 5.3 — Saving a Trail
 
 ```swift
-import Foundation
-import CoreData
+func saveTrail(name: String,
+               distance: Double,
+               duration: Double,
+               path: [CLLocationCoordinate2D],
+               context: NSManagedObjectContext) {
+    let trail = Trail(context: context)
+    trail.id = UUID()
+    trail.name = name
+    trail.date = Date()
+    trail.distanceMeters = distance
+    trail.durationSeconds = duration
 
-@objc(Trail)
-public class Trail: NSManagedObject {}
-```
-
-**File:** `Models/Trail+CoreDataProperties.swift`
-
-```swift
-import Foundation
-import CoreData
-
-extension Trail {
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Trail> {
-        return NSFetchRequest<Trail>(entityName: "Trail")
+    for coord in path {
+        let point = TrailPoint(context: context)
+        point.latitude = coord.latitude
+        point.longitude = coord.longitude
+        point.timestamp = Date()
+        point.trail = trail
     }
 
-    @NSManaged public var id: UUID?
-    @NSManaged public var name: String?
-    @NSManaged public var date: Date?
-    @NSManaged public var distanceMeters: Double
-    @NSManaged public var stepCount: Int32
-    @NSManaged public var durationSeconds: Double
-    @NSManaged public var notes: String?
-    @NSManaged public var trailPoints: NSSet?
-}
-
-// MARK: - TrailPoint relationship helpers
-extension Trail {
-    @objc(addTrailPointsObject:)
-    @NSManaged public func addToTrailPoints(_ value: TrailPoint)
-
-    @objc(removeTrailPointsObject:)
-    @NSManaged public func removeFromTrailPoints(_ value: TrailPoint)
-
-    @objc(addTrailPoints:)
-    @NSManaged public func addToTrailPoints(_ values: NSSet)
-
-    @objc(removeTrailPoints:)
-    @NSManaged public func removeFromTrailPoints(_ values: NSSet)
-}
-
-extension Trail: Identifiable {}
-```
-
-**File:** `Models/TrailPoint+CoreDataClass.swift`
-
-```swift
-import Foundation
-import CoreData
-
-@objc(TrailPoint)
-public class TrailPoint: NSManagedObject {}
-```
-
-> Create `TrailPoint+CoreDataProperties.swift` similarly with the attributes listed in 5.2.
-
-### 5.4 — Saving a Trail from GPS Data
-
-Create a save function that takes `LocationService` output and persists it. This is typically called from the tracking view when the user taps "Stop".
-
-**File:** `ViewModels/TrailDetailViewModel.swift`
-
-```swift
-import Foundation
-import CoreData
-import CoreLocation
-
-final class TrailDetailViewModel: ObservableObject {
-    private let context: NSManagedObjectContext
-
-    init(context: NSManagedObjectContext) {
-        self.context = context
-    }
-
-    func saveTrail(
-        name: String,
-        date: Date,
-        distanceMeters: Double,
-        stepCount: Int32,
-        durationSeconds: Double,
-        coordinates: [CLLocationCoordinate2D]
-    ) {
-        context.perform {
-            let trail = Trail(context: self.context)
-            trail.id = UUID()
-            trail.name = name
-            trail.date = date
-            trail.distanceMeters = distanceMeters
-            trail.stepCount = stepCount
-            trail.durationSeconds = durationSeconds
-
-            // Save each GPS point
-            for (index, coord) in coordinates.enumerated() {
-                let point = TrailPoint(context: self.context)
-                point.latitude = coord.latitude
-                point.longitude = coord.longitude
-                point.timestamp = Date(timeIntervalSinceNow: Double(index))
-                trail.addToTrailPoints(point)
-            }
-
-            do {
-                try self.context.save()
-            } catch {
-                print("Failed to save trail: \(error)")
-            }
-        }
-    }
-
-    func deleteTrail(_ trail: Trail) {
-        context.delete(trail)
-        try? context.save()
+    do {
+        try context.save()
+    } catch {
+        print("[Persistence] Save failed: \(error)")
+        context.rollback()
     }
 }
 ```
 
-### 5.5 — AddTrailView (Save from Sheet)
+### 5.4 — Fetching Trails
 
-**File:** `Views/List/AddTrailView.swift` *(create this file)*
-
-```swift
-import SwiftUI
-
-struct AddTrailView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var name: String = ""
-    @State private var notes: String = ""
-    @State private var isSaving = false
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Trail Info") {
-                    TextField("Trail name", text: $name)
-                    TextField("Notes (optional)", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-            }
-            .navigationTitle("New Trail")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
-    }
-
-    private func save() {
-        let trail = Trail(context: viewContext)
-        trail.id = UUID()
-        trail.name = name.trimmingCharacters(in: .whitespaces)
-        trail.date = Date()
-        trail.notes = notes.isEmpty ? nil : notes
-        trail.distanceMeters = 0
-        trail.stepCount = 0
-        trail.durationSeconds = 0
-
-        try? viewContext.save()
-        dismiss()
-    }
-}
-```
-
-### 5.6 — Advanced Core Data: Background Saves
-
-For saving large batches (e.g., hundreds of GPS points) without blocking the UI:
+Use `@FetchRequest` directly in SwiftUI views:
 
 ```swift
-func saveLargeTrailInBackground(coordinates: [CLLocationCoordinate2D]) {
-    PersistenceController.shared.performBackgroundTask { bgContext in
-        let trail = Trail(context: bgContext)
-        trail.id = UUID()
-        trail.name = "Background Trail"
-        trail.date = Date()
-
-        for coord in coordinates {
-            let point = TrailPoint(context: bgContext)
-            point.latitude = coord.latitude
-            point.longitude = coord.longitude
-            point.timestamp = Date()
-            trail.addToTrailPoints(point)
-        }
-
-        try? bgContext.save()
-        // viewContext is automatically updated via automaticallyMergesChangesFromParent
-    }
-}
-```
-
-### 5.7 — Predicates and Filtering
-
-```swift
-// Fetch trails from the last 30 days
-let calendar = Calendar.current
-let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: Date())!
-
-let request = Trail.fetchRequest()
-request.predicate = NSPredicate(
-    format: "date >= %@ AND distanceMeters > %f",
-    thirtyDaysAgo as CVarArg,
-    1000.0
-)
-request.sortDescriptors = [NSSortDescriptor(keyPath: \Trail.date, ascending: false)]
-
-// In SwiftUI use it dynamically:
 @FetchRequest(
     sortDescriptors: [NSSortDescriptor(keyPath: \Trail.date, ascending: false)],
-    predicate: NSPredicate(format: "distanceMeters > 1000")
+    animation: .default
 )
-private var longTrails: FetchedResults<Trail>
+private var trails: FetchedResults<Trail>
 ```
+
+Or fetch programmatically from a ViewModel:
+
+```swift
+func fetchRecentTrails(limit: Int = 10) -> [Trail] {
+    let request = Trail.fetchRequest()
+    request.sortDescriptors = [NSSortDescriptor(keyPath: \Trail.date, ascending: false)]
+    request.fetchLimit = limit
+    return (try? viewContext.fetch(request)) ?? []
+}
+```
+
+**Keywords:** NSPersistentContainer, NSManagedObjectContext, Core Data stack, @FetchRequest SwiftUI, NSManagedObject subclass, save context, rollback, in-memory store preview, automaticallyMergesChangesFromParent, Core Data relationships
 
 ---
 
 ## Putting It All Together
 
-The sections above are independent modules. Here is how they connect in the final app flow:
+With all five parts implemented, wire everything up:
+
+1. `TrailTrackerApp` injects the Core Data context via `.environment`.
+2. `AppTabView` provides three tabs — each tab gets its own `NavigationStack`.
+3. **Trails tab:** `TrailListView` fetches and displays saved trails, navigates to `TrailDetailView` on tap.
+4. **Track tab:** `LiveTrackingView` uses `LocationService` to record a route. On stop, calls `saveTrail(...)` to persist to Core Data.
+5. **Sensors tab:** `SensorsView` uses `MotionService` to display live accelerometer, gyroscope, and pedometer readings.
+
+### Data Flow Diagram
 
 ```
-App Launch
-    └── AppTabView (TabView)
-            ├── Tab 1: TrailListView
-            │       └── NavigationLink → TrailDetailView
-            │               └── TrailMapView (MapKit)
-            ├── Tab 2: LiveTrackingView
-            │       ├── LocationService (GPS)
-            │       ├── MotionService (Pedometer)
-            │       └── "Save" → TrailDetailViewModel.saveTrail()
-            │               └── Core Data save → Trail + TrailPoints
-            └── Tab 3: SensorsView
-                    └── MotionService (Accelerometer, Gyroscope)
+User taps "Stop Tracking"
+        │
+        ▼
+LiveTrackingView
+        │  calls
+        ▼
+LocationService.stopTracking()
+        │  returns path + distance
+        ▼
+saveTrail(..., context: viewContext)
+        │  saves to
+        ▼
+NSPersistentContainer (SQLite on disk)
+        │  triggers
+        ▼
+@FetchRequest in TrailListView refreshes
+        │
+        ▼
+New trail appears in list
 ```
 
-### Integration: Save a tracked trail to Core Data
-
-When the user finishes a tracked trail, wire the GPS and sensor data to Core Data:
-
-```swift
-// In LiveTrackingView — "Save Trail" button action
-func saveCurrent() {
-    let viewModel = TrailDetailViewModel(context: viewContext)
-    viewModel.saveTrail(
-        name: "Trail \(Date().formatted(date: .abbreviated, time: .omitted))",
-        date: Date(),
-        distanceMeters: locationService.totalDistance,
-        stepCount: Int32(motionService.stepCount),
-        durationSeconds: trackingDuration,
-        coordinates: locationService.recordedPath
-    )
-}
-```
+**Keywords:** data flow SwiftUI, end-to-end iOS app, Core Data save flow, @FetchRequest refresh, ObservableObject chain, app wiring
 
 ---
 
 ## Build & Run
 
-### Step 1 — Simulator
+### Run in Simulator
 
-1. In Xcode, select a simulator (e.g., **iPhone 16**) from the device picker.
-2. Press `Cmd + R` to build and run.
-3. To test GPS in the Simulator:
-   - With the app running, go to **Simulator menu > Features > Location**
-   - Choose a preset like **City Bicycle Ride** or **Freeway Drive**
-   - Or set a custom location via **Custom Location...**
-4. Sensors (accelerometer, gyroscope) are **not available** in the Simulator. You will see the "unavailable" banner in `SensorsView`. Use a real device to test sensor data.
+```
+Product > Run   (⌘R)
+```
 
-### Step 2 — Physical Device
+> Sensors (accelerometer, gyroscope, pedometer) return no data in Simulator. Use a physical device to test those features. GPS can be simulated via `Debug > Simulate Location` in Xcode.
+
+### Run on a Device
 
 1. Connect your iPhone via USB.
-2. In Xcode Target settings, ensure your **Team** is set under **Signing & Capabilities**.
-3. Select your device from the picker.
-4. Press `Cmd + R`.
-5. On first run, go to **Settings > General > VPN & Device Management** and trust your developer certificate.
+2. Select your device in the Xcode toolbar (next to the scheme selector).
+3. Sign with your Apple ID under **Target > Signing & Capabilities**.
+4. Hit `⌘R`.
 
-### Step 3 — Common Build Errors
+### Common Build Errors
 
 | Error | Fix |
 |---|---|
-| `Couldn't load NSManagedObject subclass` | Ensure Codegen is set to `Category/Extension` and the entity class name matches |
-| `Thread 1: EXC_BAD_ACCESS` in Core Data | Check that you're not accessing `NSManagedObject` properties from a background thread without a context |
-| Location not updating | Check `Info.plist` has `NSLocationWhenInUseUsageDescription`. Re-run after adding. |
-| `CMMotionManager` returns nil data | Normal in Simulator. Test on device. |
-| `No such module 'CoreMotion'` | Add `CoreMotion.framework` in Target > Frameworks |
+| `No such module 'CoreMotion'` | Add `CoreMotion.framework` in Target > General > Frameworks |
+| `Thread 1: EXC_BAD_ACCESS` in Core Data | Ensure context operations happen on the main thread or use `context.perform {}` |
+| Location permission denied silently | Verify `NSLocationWhenInUseUsageDescription` is in `Info.plist` |
+| Simulator shows no sensor data | Test on a physical device |
+| `FetchRequest` returns empty | Confirm entity name in `.xcdatamodeld` matches exactly (case-sensitive) |
 
-### Step 4 — Running Tests
-
-```bash
-# Run unit tests
-Cmd + U
-
-# Or from terminal
-xcodebuild test \
-  -scheme TrailTracker \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
-```
-
-### Step 5 — Checking Core Data Store
-
-To inspect the SQLite store during development:
-
-```swift
-// Add to PersistenceController init, after loadPersistentStores
-print(container.persistentStoreCoordinator
-    .persistentStores.first?.url ?? "unknown")
-```
-
-Copy the printed path, then open it in **DB Browser for SQLite** or use the Xcode `CoreData` debugger argument:
-
-Add to **Scheme > Run > Arguments Passed On Launch**:
-```
--com.apple.CoreData.SQLDebug 1
--com.apple.CoreData.Logging.stderr 1
-```
+**Keywords:** Xcode build errors, run on device, iOS Simulator GPS simulation, Core Data EXC_BAD_ACCESS, signing Xcode, ⌘R build and run
 
 ---
 
-*This guide was written for Xcode 15+ and iOS 16+ using Swift 5.9 and SwiftUI. All APIs demonstrated are part of Apple's standard frameworks and require no third-party dependencies.*
+## License
+
+MIT. Build something, ship it.
