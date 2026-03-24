@@ -17,6 +17,7 @@
 9. [Part 5 — Core Data Persistence](#part-5--core-data-persistence)
 10. [Putting It All Together](#putting-it-all-together)
 11. [Build & Run](#build--run)
+12. [Keyword Reference](#keyword-reference)
 
 ---
 
@@ -31,7 +32,7 @@ TrailTracker is a real iOS application that lets users:
 
 By the end of this guide you will have a fully functional app you can run on a real device or the simulator. Every section is self-contained — skip to the part you need.
 
-**Keywords:** SwiftUI app tutorial, iOS trail tracker, GPS route recorder, CoreMotion pedometer, Core Data iOS 16, MVVM Swift
+**Keywords:** `SwiftUI app tutorial` · `iOS trail tracker` · `GPS route recorder` · `CoreMotion pedometer` · `Core Data iOS 16` · `MVVM Swift`
 
 ---
 
@@ -47,7 +48,7 @@ By the end of this guide you will have a fully functional app you can run on a r
 
 Install Xcode from the Mac App Store. Open it, accept the license agreement, and install additional components if prompted.
 
-**Keywords:** Xcode setup, Swift 5.9, iOS 16 minimum deployment, Apple Developer account, Simulator vs device
+**Keywords:** `Xcode setup` · `Swift 5.9` · `iOS 16 minimum deployment` · `Apple Developer account` · `Simulator vs device`
 
 ---
 
@@ -96,7 +97,7 @@ In **Target > General > Frameworks, Libraries, and Embedded Content**, confirm t
 - `CoreMotion.framework`
 - `MapKit.framework`
 
-**Keywords:** Info.plist permissions, NSLocationWhenInUseUsageDescription, NSMotionUsageDescription, Xcode frameworks, CoreLocation setup, CoreMotion setup
+**Keywords:** `Info.plist permissions` · `NSLocationWhenInUseUsageDescription` · `NSMotionUsageDescription` · `Xcode frameworks` · `CoreLocation setup` · `CoreMotion setup`
 
 ---
 
@@ -152,7 +153,7 @@ TrailTracker/
 - ViewModels own the business logic and publish formatted data — Views contain zero formatting code.
 - Core Data context flows down the view hierarchy via `.environment(\.managedObjectContext, ...)`.
 
-**Keywords:** MVVM architecture iOS, SwiftUI MVVM, ObservableObject, service layer Swift, Core Data environment, separation of concerns
+**Keywords:** `MVVM architecture iOS` · `SwiftUI MVVM` · `ObservableObject` · `service layer Swift` · `Core Data environment` · `separation of concerns`
 
 ---
 
@@ -271,7 +272,7 @@ struct TrailListView: View {
 }
 ```
 
-**Keywords:** NavigationStack SwiftUI, TabView iOS, NavigationLink, programmatic navigation NavigationPath, sheet modifier, toolbar SwiftUI, push navigation, modal presentation
+**Keywords:** `NavigationStack SwiftUI` · `TabView iOS` · `NavigationLink` · `programmatic navigation NavigationPath` · `sheet modifier` · `toolbar SwiftUI` · `push navigation` · `modal presentation`
 
 ---
 
@@ -487,7 +488,7 @@ struct SensorRow: View {
 }
 ```
 
-**Keywords:** CoreMotion Swift, CMMotionManager, CMPedometer, accelerometer SwiftUI, gyroscope iOS, step counter Swift, @Published Combine, weak self closure, 10 Hz sensor update
+**Keywords:** `CoreMotion Swift` · `CMMotionManager` · `CMPedometer` · `accelerometer SwiftUI` · `gyroscope iOS` · `step counter Swift` · `@Published Combine` · `weak self closure` · `10 Hz sensor update`
 
 ---
 
@@ -643,7 +644,7 @@ struct LiveTrackingView: View {
 }
 ```
 
-**Keywords:** CoreLocation Swift, CLLocationManager delegate, GPS tracking iOS, horizontalAccuracy filter, MKCoordinateRegion, MapKit SwiftUI, requestWhenInUseAuthorization, distanceFilter, kCLLocationAccuracyBest, polyline map
+**Keywords:** `CoreLocation Swift` · `CLLocationManager delegate` · `GPS tracking iOS` · `horizontalAccuracy filter` · `MKCoordinateRegion` · `MapKit SwiftUI` · `requestWhenInUseAuthorization` · `distanceFilter` · `kCLLocationAccuracyBest` · `polyline map`
 
 ---
 
@@ -764,7 +765,7 @@ struct TrailRowView: View {
 }
 ```
 
-**Keywords:** SwiftUI List, FetchRequest Core Data, searchable modifier, onDelete swipe, ForEach CoreData, NSSortDescriptor, filteredResults, EditButton, NavigationLink list row
+**Keywords:** `SwiftUI List` · `FetchRequest Core Data` · `searchable modifier` · `onDelete swipe` · `ForEach CoreData` · `NSSortDescriptor` · `filteredResults` · `EditButton` · `NavigationLink list row`
 
 ---
 
@@ -884,7 +885,7 @@ func fetchRecentTrails(limit: Int = 10) -> [Trail] {
 }
 ```
 
-**Keywords:** NSPersistentContainer, NSManagedObjectContext, Core Data stack, @FetchRequest SwiftUI, NSManagedObject subclass, save context, rollback, in-memory store preview, automaticallyMergesChangesFromParent, Core Data relationships
+**Keywords:** `NSPersistentContainer` · `NSManagedObjectContext` · `Core Data stack` · `@FetchRequest SwiftUI` · `NSManagedObject subclass` · `save context` · `rollback` · `in-memory store preview` · `automaticallyMergesChangesFromParent` · `Core Data relationships`
 
 ---
 
@@ -922,7 +923,7 @@ NSPersistentContainer (SQLite on disk)
 New trail appears in list
 ```
 
-**Keywords:** data flow SwiftUI, end-to-end iOS app, Core Data save flow, @FetchRequest refresh, ObservableObject chain, app wiring
+**Keywords:** `data flow SwiftUI` · `end-to-end iOS app` · `Core Data save flow` · `@FetchRequest refresh` · `ObservableObject chain` · `app wiring`
 
 ---
 
@@ -953,7 +954,94 @@ Product > Run   (⌘R)
 | Simulator shows no sensor data | Test on a physical device |
 | `FetchRequest` returns empty | Confirm entity name in `.xcdatamodeld` matches exactly (case-sensitive) |
 
-**Keywords:** Xcode build errors, run on device, iOS Simulator GPS simulation, Core Data EXC_BAD_ACCESS, signing Xcode, ⌘R build and run
+**Keywords:** `Xcode build errors` · `run on device` · `iOS Simulator GPS simulation` · `Core Data EXC_BAD_ACCESS` · `signing Xcode` · `⌘R build and run`
+
+---
+
+## Keyword Reference
+
+A quick-lookup glossary for every keyword used in this guide.
+
+### Architecture & Patterns
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `MVVM architecture iOS` | Model-View-ViewModel — separates UI from business logic | Create a `ViewModel` class per screen; Views only read from it via `@StateObject` or `@ObservedObject` |
+| `ObservableObject` | Protocol that lets a class publish changes to SwiftUI views | Conform your ViewModel/Service to `ObservableObject`; mark properties with `@Published` |
+| `@Published` | Property wrapper that triggers a SwiftUI refresh when its value changes | Add `@Published var myValue = ""` inside an `ObservableObject` class |
+| `service layer Swift` | A class that owns one system API (Location, Motion, etc.) and exposes clean methods | Create `final class FooService: ObservableObject` and inject it into your ViewModel |
+| `separation of concerns` | Each type does one job — Views display, ViewModels format, Services call APIs | Don't put `CLLocationManager` directly in a View; wrap it in a `LocationService` |
+| `weak self closure` | Prevents retain cycles inside async callbacks | Always capture `[weak self]` in callbacks passed to system APIs like `CMMotionManager` |
+
+### SwiftUI Navigation
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `NavigationStack SwiftUI` | iOS 16+ replacement for `NavigationView` — manages a push/pop stack | Wrap your root view in `NavigationStack { ... }` |
+| `NavigationLink` | A button that pushes a destination onto the `NavigationStack` | `NavigationLink(destination: DetailView()) { RowView() }` |
+| `programmatic navigation NavigationPath` | Drive navigation from code instead of user taps | `@State var path = NavigationPath()` → `path.append(item)` |
+| `TabView iOS` | Bottom tab bar container | `TabView { View1().tabItem { Label(...) } }` |
+| `sheet modifier` | Presents a modal sheet | `.sheet(isPresented: $flag) { ModalView() }` |
+| `toolbar SwiftUI` | Adds buttons to the navigation bar | `.toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button(...) } }` |
+| `modal presentation` | Any overlay that covers content (sheet, fullScreenCover, alert) | Use `.sheet` for partial cover, `.fullScreenCover` for full screen |
+
+### SwiftUI List & Data Display
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `SwiftUI List` | Scrollable, lazily-loaded list of rows | `List { ForEach(items) { item in RowView(item) } }` |
+| `searchable modifier` | Adds a search bar to a `List` | `.searchable(text: $query, prompt: "Search...")` |
+| `onDelete swipe` | Enables swipe-to-delete on `ForEach` rows inside a `List` | `.onDelete(perform: deleteFunc)` on the `ForEach` |
+| `EditButton` | Built-in button that toggles `List` edit mode (enables row deletion/reordering) | Add `EditButton()` inside a `.toolbar { }` block |
+| `ForEach CoreData` | Iterates over `FetchedResults` in a `List` | `ForEach(fetchedResults) { item in ... }` |
+| `NSSortDescriptor` | Defines sort order for a fetch request | `NSSortDescriptor(keyPath: \Trail.date, ascending: false)` |
+
+### Core Data
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `NSPersistentContainer` | Manages the full Core Data stack (store + context) | Create once as a singleton in `PersistenceController`; access via `.shared` |
+| `NSManagedObjectContext` | The "scratch pad" where objects live before being saved to disk | Inject via `.environment(\.managedObjectContext, ...)` and read with `@Environment` |
+| `@FetchRequest SwiftUI` | Property wrapper that auto-fetches Core Data objects and updates the UI | `@FetchRequest(sortDescriptors: [...]) private var items: FetchedResults<Item>` |
+| `NSManagedObject subclass` | A Swift class representing one Core Data entity | Generated by Xcode from your `.xcdatamodeld`; use it like a regular Swift class |
+| `save context` | Commits in-memory changes to the SQLite store | `try context.save()` — always wrap in `do/catch` |
+| `rollback` | Discards unsaved in-memory changes | `context.rollback()` — call in the `catch` block after a failed save |
+| `in-memory store preview` | A Core Data store that lives in RAM and disappears on exit | Set `url = URL(fileURLWithPath: "/dev/null")` — use for SwiftUI previews and unit tests |
+| `automaticallyMergesChangesFromParent` | Keeps `viewContext` in sync when background contexts save | Set `container.viewContext.automaticallyMergesChangesFromParent = true` in your stack init |
+| `Core Data relationships` | Links between entities (one-to-many, many-to-many) | Define in `.xcdatamodeld` editor; access in Swift via the generated property (e.g., `trail.points`) |
+| `Core Data environment` | Passing the context down the view tree via SwiftUI environment | `.environment(\.managedObjectContext, container.viewContext)` on the root view |
+
+### CoreLocation & GPS
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `CLLocationManager delegate` | Receives location events via callbacks | Set `locationManager.delegate = self` and implement `didUpdateLocations` |
+| `requestWhenInUseAuthorization` | Asks the user for location access while the app is open | Call once before starting location updates; requires `NSLocationWhenInUseUsageDescription` in `Info.plist` |
+| `horizontalAccuracy filter` | `CLLocation.horizontalAccuracy` measures GPS precision in meters | Skip locations where `horizontalAccuracy >= 20` to filter out noisy readings |
+| `distanceFilter` | Minimum meters the device must move before a new location event fires | `locationManager.distanceFilter = 5` — reduces battery use and data volume |
+| `kCLLocationAccuracyBest` | Highest GPS accuracy mode (most battery) | `locationManager.desiredAccuracy = kCLLocationAccuracyBest` |
+| `MKCoordinateRegion` | A map region defined by a center coordinate and a lat/lon span | `MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01))` |
+| `MapKit SwiftUI` | Apple's map framework with a SwiftUI `Map` view | `import MapKit` then `Map(coordinateRegion: $region, showsUserLocation: true)` |
+| `polyline map` | A line drawn on a map connecting a series of coordinates | Use `MKPolyline` + `MKPolylineRenderer` (UIKit) or `MapPolyline` (SwiftUI iOS 17+) |
+
+### CoreMotion & Sensors
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `CMMotionManager` | Provides raw accelerometer and gyroscope data | Create one instance per app; call `startAccelerometerUpdates(to:withHandler:)` |
+| `CMPedometer` | High-level step counter and pace tracker | `pedometer.startUpdates(from: Date()) { data, error in ... }` |
+| `accelerometer SwiftUI` | Reading X/Y/Z acceleration forces (in g) | Access via `CMAccelerometerData.acceleration.x/.y/.z` |
+| `gyroscope iOS` | Reading rotation rate around X/Y/Z axes (radians/sec) | Access via `CMGyroData.rotationRate.x/.y/.z` |
+| `10 Hz sensor update` | Sensor polling rate of 10 times per second | `motionManager.accelerometerUpdateInterval = 0.1` (0.1 s = 10 Hz) |
+
+### Permissions & Setup
+
+| Keyword | What it is | How to use it |
+|---|---|---|
+| `NSLocationWhenInUseUsageDescription` | `Info.plist` key that provides the location permission prompt text | Add the key with a user-facing string explaining why you need location |
+| `NSMotionUsageDescription` | `Info.plist` key for the motion/sensor permission prompt | Add with a string explaining why you need motion data |
+| `Info.plist permissions` | Privacy usage description strings required before accessing protected APIs | Missing keys = silent permission denial; always add before calling the API |
+| `Xcode frameworks` | System libraries linked to your target | Add under **Target > General > Frameworks, Libraries, and Embedded Content** |
 
 ---
 
